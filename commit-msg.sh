@@ -23,7 +23,7 @@ function checkIfConfigFileExists()
 # Local configuration overrides global configuration
 function setConfigurationPath()
 {
-    localConfig="$PWD/.git/hooks/.commit-msg-config.json"
+    localConfig="$PWD/.git/hooks/commit-msg-config.json"
     
     if [ -f "$localConfig" ]; then
         CONFIG=$localConfig
@@ -37,18 +37,18 @@ function loadConfiguration()
 {
     isEnabled=$(jq -r .enabled "$CONFIG")
 
-    if [[ ! $enabled ]]; then
+    if [[ ! $isEnabled ]]; then
         exit 0
     fi
 
     revert=$(jq -r .revert "$CONFIG")
-    types=$($(jq -r .types[] "$CONFIG"))
+    types=($(jq -r '.types[]' "$CONFIG"))
     minimumLength=$(jq -r .length.min "$CONFIG")
     maximumLength=$(jq -r .length.max "$CONFIG")
 }
 
 # Dynamically build regular expression used for commit message validation
-function buildRegex
+function buildRegex()
 {
     loadConfiguration
     
@@ -58,17 +58,17 @@ function buildRegex
         regexp="${regexp}^([Rr]evert|[Mm]erge):? )?.*|^("
     fi
 
-    for type in "$types[@]"
+    for type in "${types[@]}"
     do
-        regext="${regexp}$type|"
+        regexp="${regexp}$type|"
     done
 
     regexp="${regexp%|})(\(.+\))?: "
-    regexp="${regexp}.${min_length,$max_length}$"
+    regexp="${regexp}.{$minimumLength,$maximumLength}$"
 }
 
-# Print a message which explains what is wrong with the commit message itself
-function displayOutput
+# Print an error message which explains what is wrong with the commit message itself
+function displayOutput()
 {
     NOCOLOR='\033[0m'
     RED='\033[0;31m'
@@ -78,21 +78,21 @@ function displayOutput
     YELLOW='\033[1;33m'
 
     commitMessage=$(git log -1 HEAD --pretty=format:%s)
-    regularExpression=$regexp
 
     echo -e "\n${RED}[Invalid Commit Message]${NOCOLOR}"
     echo -e "------------------------"
     echo -e "${ORANGE}Allowed types:${NOCOLOR} ${types[@]}"
-    echo -e "${ORANGE}Max length (first line):${NOCOLOR} $max_length"
-    echo -e "${ORANGE}Min length (first line):${NOCOLOR} $min_length"
-    echo -e "${ORANGE}Your commit message:${NOCOLOR} $commit_message"
-    echo -e "${ORANGE}Length:${NOCOLOR} $(echo $commit_message | wc -c)"
+    echo -e "${ORANGE}Max length (first line):${NOCOLOR} $minimumLength"
+    echo -e "${ORANGE}Min length (first line):${NOCOLOR} $maximumLength"
+    echo -e "${ORANGE}Your commit message:${NOCOLOR} $commitMessage"
+    echo -e "${ORANGE}Length:${NOCOLOR} $(echo $commitMessage | wc -c)"
 }
 
 # Init the hook
 setConfigurationPath
 checkIfConfigFileExists
-checkIfConfigFileExists
+checkIfJqExists
+loadConfiguration
 
 # Get the first line of a commit message
 INPUT_FILE=$1
