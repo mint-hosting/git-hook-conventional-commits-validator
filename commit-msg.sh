@@ -32,7 +32,7 @@ function setConfigurationPath()
     fi
 }
 
-# Loads configuration
+# Loads configuration from a file
 function loadConfiguration()
 {
     isEnabled=$(jq -r .enabled "$CONFIG")
